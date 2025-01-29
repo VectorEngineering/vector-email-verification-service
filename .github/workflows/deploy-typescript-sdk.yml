@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'sdk/typescript/**'
+      - 'sdks/typescript/**'
       - 'version.yaml'
   workflow_dispatch:
 jobs:
@@ -29,12 +29,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd sdk/typescript
+          cd sdks/typescript
           npm ci
 
       - name: Publish typescript
         run: |
-          cd sdk/typescript
+          cd sdks/typescript
           npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
