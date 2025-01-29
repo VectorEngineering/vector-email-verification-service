@@ -15,7 +15,7 @@ on:
 env:
   DOCKER_REGISTRY: docker.io
   DOCKER_IMAGE_NAME: ${{ github.repository_owner }}/email-verification-service
-  PLATFORMS: linux/arm64
+  PLATFORMS: linux/amd64
 
 jobs:
   docker:
