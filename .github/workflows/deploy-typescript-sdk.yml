@@ -1,0 +1,40 @@
+name: Deploy TypeScript SDK
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'sdk/typescript/**'
+      - 'version.yaml'
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read versions
+        id: versions
+        run: |
+          TS_VERSION=$(grep 'typescript:' version.yaml | awk '{print $2}')
+          echo "TS_VERSION=$TS_VERSION" >> $GITHUB_ENV
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: |
+          cd sdk/typescript
+          npm ci
+
+      - name: Publish typescript
+        run: |
+          cd sdk/typescript
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
