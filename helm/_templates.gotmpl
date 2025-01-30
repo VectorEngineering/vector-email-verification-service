@@ -1,0 +1,206 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+
+{{ template "chart.badgesSection" . }}
+
+{{ template "chart.description" . }}
+
+{{ template "chart.homepageLine" . }}
+
+## Features
+
+- **Scalable Architecture**: Supports both HTTP server and worker components
+- **Queue-Based Processing**: Uses RabbitMQ for reliable task distribution
+- **Persistent Storage**: PostgreSQL for storing verification results
+- **Proxy Support**: Per-worker proxy configuration for better email verification
+- **Flexible Deployment**: Support for external services or built-in components
+- **High Availability**: Built-in support for autoscaling and pod disruption budgets
+
+## TL;DR
+
+```console
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm dependency update
+helm install my-release .
+```
+
+## Introduction
+
+This Helm chart installs and configures the Email Verification Service with RabbitMQ-based queue architecture in a Kubernetes cluster. The service is designed to handle high-volume email verification tasks with proper throttling and proxy support.
+
+## Prerequisites
+
+- Kubernetes 1.19+
+- Helm 3.2.0+
+- PV provisioner support in the underlying infrastructure
+- At least one proxy IP per worker (for production use)
+
+## Architecture Overview
+
+### Components
+
+1. **HTTP Server**
+   - Accepts incoming verification requests
+   - Queues tasks to RabbitMQ
+   - Horizontally scalable
+   - Stateless operation
+
+2. **Workers**
+   - Process email verification tasks
+   - One worker per proxy IP (recommended)
+   - Configurable throttling
+   - Support for proxy configuration
+
+3. **RabbitMQ**
+   - Reliable message queue
+   - Task distribution
+   - Built-in management console
+   - Persistence support
+
+4. **PostgreSQL**
+   - Stores verification results
+   - Persistent storage
+   - High availability options
+
+### Scaling Considerations
+
+- Each worker should have its own proxy IP
+- Recommended limit: 10,000 verifications per IP per day
+- Maximum 5 concurrent verifications per worker
+- Server component can be scaled independently
+
+## Installing the Chart
+
+To install the chart with the release name `my-release`:
+
+```console
+helm install my-release .
+```
+
+The command deploys the Email Verification Service on the Kubernetes cluster with default configuration. The [Parameters](#parameters) section lists the parameters that can be configured during installation.
+
+### Production Configuration
+
+For production deployments, consider the following configuration:
+
+```yaml
+# values.yaml
+server:
+  enabled: true
+  replicaCount: 3
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+workers:
+  enabled: true
+  instances:
+    worker1:
+      proxy:
+        existingSecret: "proxy1-creds"
+    worker2:
+      proxy:
+        existingSecret: "proxy2-creds"
+
+postgresql:
+  primary:
+    persistence:
+      size: 50Gi
+
+rabbitmq:
+  persistence:
+    size: 20Gi
+```
+
+### Using External Services
+
+To use external PostgreSQL and RabbitMQ:
+
+```yaml
+# values.yaml
+postgresql:
+  enabled: false
+
+database:
+  external: true
+  existingSecret: "postgres-creds"
+
+rabbitmq:
+  enabled: false
+
+messageQueue:
+  external: true
+  existingSecret: "rabbitmq-creds"
+```
+
+## Uninstalling the Chart
+
+To uninstall/delete the `my-release` deployment:
+
+```console
+helm delete my-release
+```
+
+## Configuration
+
+### Global Parameters
+
+{{ template "chart.valuesTable" . }}
+
+### Important Notes
+
+1. **Proxy Configuration**
+   - Each worker should have a dedicated proxy IP
+   - Use secrets for proxy credentials in production
+   - Configure proper throttling limits
+
+2. **Resource Management**
+   - Set appropriate resource limits
+   - Configure HPA for automatic scaling
+   - Use PDBs for high availability
+
+3. **Security**
+   - Use secrets for sensitive information
+   - Configure proper network policies
+   - Enable TLS where appropriate
+
+4. **Monitoring**
+   - RabbitMQ metrics are enabled by default
+   - Configure proper logging
+   - Set up health checks
+
+{{ template "chart.maintainersSection" . }}
+
+{{ template "chart.sourcesSection" . }}
+
+{{ template "chart.requirementsSection" . }}
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Worker Not Processing**
+   - Check proxy configuration
+   - Verify RabbitMQ connection
+   - Check resource limits
+
+2. **Server Not Responding**
+   - Verify PostgreSQL connection
+   - Check resource allocation
+   - Verify service configuration
+
+3. **Queue Building Up**
+   - Check worker throttling settings
+   - Verify proxy functionality
+   - Scale workers if needed
+
+## Support
+
+For support and questions about this Helm chart:
+
+1. Check the [documentation](https://docs.reacher.email/self-hosting/scaling-for-production/option-2-rabbitmq-based-queue-architecture)
+2. Open issues in the [GitHub repository](https://github.com/reacherhq/reacher)
+3. Contact the maintainers
+
+{{ template "helm-docs.versionFooter" . }}

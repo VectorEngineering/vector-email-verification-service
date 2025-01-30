@@ -1,0 +1,38 @@
+{{- if .Values.ingress.enabled -}}
+{{- $fullName := include "email-verification-service.fullname" . -}}
+apiVersion: {{ include "email-verification-service.ingress.apiVersion" . }}
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "email-verification-service.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                {{- if $.Values.server.enabled }}
+                name: {{ $fullName }}-server
+                port:
+                  number: {{ $.Values.server.port }}
+                {{- else if and $.Values.workers.enabled $.Values.workers.instances.worker1.enabled }}
+                name: {{ $.Values.workers.instances.worker1.name }}
+                port:
+                  number: {{ $.Values.workers.instances.worker1.port }}
+                {{- end }}
+          {{- end }}
+    {{- end }}
+{{- end }}

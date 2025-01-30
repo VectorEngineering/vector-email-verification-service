@@ -1,0 +1,39 @@
+{{- if and .Values.server.enabled .Values.server.podDisruptionBudget.enabled }}
+---
+apiVersion: {{ include "email-verification-service.pdb.apiVersion" . }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "email-verification-service.fullname" . }}-server
+  labels:
+    {{- include "email-verification-service.labels" . | nindent 4 }}
+    component: server
+spec:
+  minAvailable: {{ .Values.server.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "email-verification-service.selectorLabels" . | nindent 6 }}
+      component: server
+{{- end }}
+
+{{- if .Values.workers.enabled }}
+{{- range $worker, $config := .Values.workers.instances }}
+{{- if and $config.enabled $config.podDisruptionBudget.enabled }}
+---
+apiVersion: {{ include "email-verification-service.pdb.apiVersion" $ }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $config.name }}
+  labels:
+    {{- include "email-verification-service.labels" $ | nindent 4 }}
+    component: worker
+    worker: {{ $config.name }}
+spec:
+  minAvailable: {{ $config.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "email-verification-service.selectorLabels" $ | nindent 6 }}
+      component: worker
+      worker: {{ $config.name }}
+{{- end }}
+{{- end }}
+{{- end }}

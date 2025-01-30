@@ -53,3 +53,54 @@ update-role-accounts:
 update-free-email-providers:
 # License is MIT.
 	curl https://raw.githubusercontent.com/ihmpavel/free-email-domains-list/refs/heads/master/data/data.txt -o core/src/misc/b2c.txt
+
+# Helm chart directory
+CHART_DIR := helm/email-verification-service
+
+# Helm variables
+HELM_DOCS_VERSION := v1.11.0
+CHART_VERSION := $(shell yq e '.version' ${CHART_DIR}/Chart.yaml)
+CHART_NAME := $(shell yq e '.name' ${CHART_DIR}/Chart.yaml)
+
+.PHONY: helm-deps
+helm-deps: ## Update Helm dependencies
+	helm dependency update ${CHART_DIR}
+
+.PHONY: helm-lint
+helm-lint: helm-deps ## Lint Helm chart
+	helm lint ${CHART_DIR}
+
+.PHONY: helm-template
+helm-template: helm-deps ## Template Helm chart
+	helm template ${CHART_NAME} ${CHART_DIR} --debug
+
+.PHONY: helm-validate
+helm-validate: helm-template ## Validate Helm chart
+	helm template ${CHART_NAME} ${CHART_DIR} | kubectl apply --dry-run=client -f -
+
+.PHONY: helm-test
+helm-test: helm-lint helm-validate ## Run all Helm tests
+
+.PHONY: install-helm-docs
+install-helm-docs: ## Install helm-docs
+	curl -L https://github.com/norwoodj/helm-docs/releases/download/${HELM_DOCS_VERSION}/helm-docs_${HELM_DOCS_VERSION#v}_Darwin_x86_64.tar.gz | tar xz
+	sudo mv helm-docs /usr/local/bin/helm-docs
+
+.PHONY: helm-docs
+helm-docs: ## Generate Helm documentation
+	helm-docs --chart-search-root=${CHART_DIR} \
+		--template-files=./helm/_templates.gotmpl \
+		--output-file=README.md \
+		--sort-values-order=file
+
+.PHONY: helm-package
+helm-package: helm-test ## Package Helm chart
+	helm package ${CHART_DIR}
+
+.PHONY: helm-all
+helm-all: helm-deps helm-lint helm-validate helm-docs helm-package ## Run all Helm tasks
+
+# Help target
+.PHONY: help
+help: ## Display this help
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)

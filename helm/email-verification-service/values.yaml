@@ -1,0 +1,300 @@
+# -- Global Values
+global:
+  # -- List of image pull secrets to use for all deployments
+  imagePullSecrets: []
+  # -- Global storage class to use for all PVCs. If not set, the default storage class will be used
+  storageClass: ""
+
+# -- Image configuration
+image:
+  # -- Repository to pull the image from
+  repository: feelguuds/email-verification-service
+  # -- Image pull policy
+  pullPolicy: IfNotPresent
+  # -- Tag of the image to pull. If not specified, defaults to Chart.AppVersion
+  tag: "latest"
+  # -- Optionally specify an array of imagePullSecrets.
+  # -- Secrets must be manually created in the namespace.
+  # imagePullSecrets:
+  #   - name: myRegistryKeySecretName
+
+# -- Override the name of the chart
+nameOverride: ""
+# -- Override the full name of the chart
+fullnameOverride: ""
+
+# -- ServiceAccount configuration
+serviceAccount:
+  # -- Specifies whether a service account should be created
+  create: true
+  # -- Annotations to add to the service account
+  annotations: {}
+  # -- The name of the service account to use.
+  # -- If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+# -- Pod annotations to add
+podAnnotations: {}
+
+# -- Pod security context configuration
+podSecurityContext: {}
+  # fsGroup: 2000
+
+# -- Container security context configuration
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# -- HTTP Server Configuration
+server:
+  # -- Enable server deployment
+  enabled: true
+  # -- Number of server replicas to deploy
+  replicaCount: 2
+  # -- Server port
+  port: 8080
+  # -- Environment variables for the server
+  env:
+    # -- Log level for the server
+    RUST_LOG: "reacher=info"
+    # -- Disable worker mode for server
+    RCH__WORKER__ENABLE: "false"
+  # -- Resource limits and requests for the server
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  # -- Autoscaling configuration for server
+  autoscaling:
+    # -- Enable horizontal pod autoscaling
+    enabled: true
+    # -- Minimum number of replicas
+    minReplicas: 2
+    # -- Maximum number of replicas
+    maxReplicas: 10
+    # -- Target CPU utilization percentage
+    targetCPUUtilizationPercentage: 80
+    # -- Target memory utilization percentage
+    targetMemoryUtilizationPercentage: 80
+  # -- Pod disruption budget configuration for server
+  podDisruptionBudget:
+    # -- Enable pod disruption budget
+    enabled: true
+    # -- Minimum number of pods that must be available
+    minAvailable: 1
+
+# -- Worker Configuration
+workers:
+  # -- Enable worker deployments
+  enabled: true
+  # -- Worker instances configuration
+  instances:
+    worker1:
+      # -- Enable this worker instance
+      enabled: true
+      # -- Name of the worker
+      name: worker1
+      # -- Worker port
+      port: 8080
+      # -- Number of worker replicas (should be 1 for 1:1 proxy IP ratio)
+      replicaCount: 1
+      # -- Number of concurrent email verifications per worker
+      concurrency: 5
+      # -- Proxy configuration for this worker
+      proxy:
+        # -- Enable proxy for this worker
+        enabled: true
+        # -- Proxy host address
+        host: ""
+        # -- Proxy port
+        port: ""
+        # -- Proxy username
+        username: ""
+        # -- Proxy password
+        password: ""
+        # -- Existing secret containing proxy credentials
+        existingSecret: ""
+        # -- Key in the existing secret for proxy host
+        existingSecretHostKey: "proxy-host"
+        # -- Key in the existing secret for proxy port
+        existingSecretPortKey: "proxy-port"
+        # -- Key in the existing secret for proxy username
+        existingSecretUsernameKey: "proxy-username"
+        # -- Key in the existing secret for proxy password
+        existingSecretPasswordKey: "proxy-password"
+      # -- Autoscaling configuration for worker
+      autoscaling:
+        # -- Disable autoscaling by default (1:1 worker to proxy IP ratio)
+        enabled: false
+        # -- Minimum number of replicas
+        minReplicas: 1
+        # -- Maximum number of replicas
+        maxReplicas: 1
+        # -- Target CPU utilization percentage
+        targetCPUUtilizationPercentage: 80
+        # -- Target memory utilization percentage
+        targetMemoryUtilizationPercentage: 80
+      # -- Pod disruption budget configuration for worker
+      podDisruptionBudget:
+        # -- Enable pod disruption budget
+        enabled: true
+        # -- Minimum number of pods that must be available
+        minAvailable: 1
+      # -- Environment variables for the worker
+      env:
+        # -- Log level for the worker
+        RUST_LOG: "reacher=info"
+        # -- Enable worker mode
+        RCH__WORKER__ENABLE: "true"
+        # -- Number of concurrent verifications
+        RCH__WORKER__RABBITMQ__CONCURRENCY: "5"
+        # -- Maximum requests per day (recommended limit per IP)
+        RCH__WORKER__THROTTLE__MAX_REQUESTS_PER_DAY: "10000"
+    worker2:
+      enabled: true
+      name: worker2
+      port: 8081
+      replicaCount: 1
+      concurrency: 5
+      proxy:
+        enabled: true
+        host: ""
+        port: ""
+        username: ""
+        password: ""
+        existingSecret: ""
+        existingSecretHostKey: "proxy-host"
+        existingSecretPortKey: "proxy-port"
+        existingSecretUsernameKey: "proxy-username"
+        existingSecretPasswordKey: "proxy-password"
+      autoscaling:
+        enabled: false
+        minReplicas: 1
+        maxReplicas: 1
+        targetCPUUtilizationPercentage: 80
+        targetMemoryUtilizationPercentage: 80
+      podDisruptionBudget:
+        enabled: true
+        minAvailable: 1
+      env:
+        RUST_LOG: "reacher=info"
+        RCH__WORKER__ENABLE: "true"
+        RCH__WORKER__RABBITMQ__CONCURRENCY: "5"
+        RCH__WORKER__THROTTLE__MAX_REQUESTS_PER_MINUTE: "60"
+
+# -- Service configuration
+service:
+  # -- Service type (ClusterIP, NodePort, or LoadBalancer)
+  type: ClusterIP
+  # -- Service port
+  port: 8080
+
+# -- Ingress configuration
+ingress:
+  # -- Enable ingress
+  enabled: true
+  # -- Ingress class name
+  className: "nginx"
+  # -- Ingress annotations
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+  # -- Ingress hosts configuration
+  hosts:
+    - host: "email-verification.local"
+      paths:
+        - path: /
+          pathType: Prefix
+
+# -- Database configuration
+database:
+  # -- Use external PostgreSQL
+  external: false
+  # -- External PostgreSQL connection string
+  dsn: ""
+  # -- Existing secret containing database credentials
+  existingSecret: ""
+  # -- Key in the existing secret for database URL
+  existingSecretKey: "database-url"
+
+# -- Message Queue configuration
+messageQueue:
+  # -- Use external RabbitMQ
+  external: false
+  # -- External RabbitMQ connection string
+  dsn: ""
+  # -- Existing secret containing RabbitMQ credentials
+  existingSecret: ""
+  # -- Key in the existing secret for RabbitMQ URL
+  existingSecretKey: "rabbitmq-url"
+
+# -- PostgreSQL configuration
+postgresql:
+  # -- Enable PostgreSQL deployment
+  enabled: true
+  # -- Authentication configuration
+  auth:
+    # -- PostgreSQL username
+    username: postgres
+    # -- PostgreSQL password
+    password: postgres
+    # -- PostgreSQL database name
+    database: reacher_db
+  # -- Service configuration
+  service:
+    # -- PostgreSQL port
+    port: 5432
+  # -- Primary configuration
+  primary:
+    # -- Persistence configuration
+    persistence:
+      # -- Enable persistence
+      enabled: true
+      # -- Storage size
+      size: 10Gi
+
+# -- RabbitMQ configuration
+rabbitmq:
+  # -- Enable RabbitMQ deployment
+  enabled: true
+  # -- Authentication configuration
+  auth:
+    # -- RabbitMQ username
+    username: guest
+    # -- RabbitMQ password
+    password: guest
+  # -- Service configuration
+  service:
+    # -- AMQP port
+    port: 5672
+    # -- Management console port
+    managerPort: 15672
+  # -- Persistence configuration
+  persistence:
+    # -- Enable persistence
+    enabled: true
+    # -- Storage size
+    size: 8Gi
+  # -- Metrics configuration
+  metrics:
+    # -- Enable Prometheus metrics
+    enabled: true
+  # -- Resource configuration
+  resources:
+    # -- Resource requests
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    # -- Resource limits
+    limits:
+      memory: 512Mi
+      cpu: 200m
+
